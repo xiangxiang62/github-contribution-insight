@@ -544,7 +544,6 @@
 
         async function fetchAllYears(username, token, createdAt) {
             const today = new Date();
-            today.setDate(today.getDate() - 1);
             const startDate = new Date(createdAt);
             const ranges = splitDateRangeByYear(startDate, today);
             const yearlyTotals = [];
