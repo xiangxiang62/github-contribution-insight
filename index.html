@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>GitHub 完整贡献看板 - 智能分析报告</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -50,7 +50,7 @@
             gap: 20px;
             flex-wrap: wrap;
         }
-        .user-avatar { width: 64px; height: 64px; border-radius: 50%; border: 3px solid white; background: white; }
+        .user-avatar { width: 64px; height: 64px; border-radius: 50%; border: 3px solid white; background: white; object-fit: cover; }
         .user-details { flex: 1; }
         .user-details .name { font-size: 1.3rem; font-weight: 600; }
         .user-details .meta { font-size: 0.85rem; opacity: 0.9; margin-top: 6px; }
@@ -208,7 +208,7 @@
 <body>
 <div class="container" id="reportContainer">
     <h1>📊 GitHub 完整贡献看板 <span style="font-size:0.8rem; background:#eef2f5; padding:4px 12px; border-radius:30px;">智能分析报告</span></h1>
-    <div class="sub">从注册到今天 · 热力图 + 年度对比 + 月度分布 + 智能总结</div>
+    <div class="sub">从注册到今天 · 热力图 + 年度对比 + 月度分布 + 智能总结 (完整包含今年数据)</div>
 
     <div class="export-btn-area no-print">
         <button class="export-btn" id="exportPNGBtn">📸 导出为 PNG</button>
@@ -293,7 +293,7 @@
         <div class="chart-card"><h3>📈 累计贡献增长</h3><canvas id="cumulativeChart"></canvas></div>
     </div>
 
-    <div class="footer-note no-print">🔍 回车生成报告 | 支持拖拽/自动滚动热力图 | 支持配色切换</div>
+    <div class="footer-note no-print">🔍 回车生成报告 | 支持拖拽/自动滚动热力图 | 支持配色切换 | 年度统计包含当年完整贡献数据</div>
 </div>
 
 <script>
@@ -316,7 +316,6 @@
         const exportPDFBtn = document.getElementById('exportPDFBtn');
         const scrollLeftBtn = document.getElementById('scrollLeftBtn');
         const scrollRightBtn = document.getElementById('scrollRightBtn');
-        const autoScrollBtn = document.getElementById('autoScrollBtn');
         const heatmapWrapper = document.getElementById('heatmapWrapper');
 
         let yearlyChart, monthlyChart, weeklyChart, levelChart, quarterlyChart, cumulativeChart;
@@ -358,17 +357,21 @@
             if (currentReportData && currentReportData.contributionMap) {
                 drawHeatmapWithData(currentReportData.contributionMap, currentReportData.startDate, currentReportData.endDate);
             }
-            document.querySelectorAll('.color-swatch').forEach(el => el.classList.remove('active'));
-            event.target.classList.add('active');
         }
 
-        window.changeColorScheme = changeColorScheme;
+        // 绑定配色点击事件，同时高亮
         document.querySelectorAll('.color-swatch').forEach(el => {
             el.addEventListener('click', function(e) {
                 const scheme = this.getAttribute('data-scheme');
-                if (scheme) changeColorScheme(scheme);
+                if (scheme) {
+                    changeColorScheme(scheme);
+                    document.querySelectorAll('.color-swatch').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                }
             });
         });
+        // 默认高亮github
+        document.querySelector('.color-swatch[data-scheme="github"]').classList.add('active');
 
         function drawHeatmapWithData(contributionsMap, startDateStr, endDateStr) {
             const ctx = canvas.getContext('2d');
@@ -449,17 +452,10 @@
             heatmapWrapper.scrollLeft = scrollLeftStart - walk;
         });
 
-        // 滚动控制
-        function scrollLeft() {
-            heatmapWrapper.scrollBy({ left: -300, behavior: 'smooth' });
-        }
-        function scrollRight() {
-            heatmapWrapper.scrollBy({ left: 300, behavior: 'smooth' });
-        }
- 
-
-        scrollLeftBtn.addEventListener('click', () => { if (isAutoScrolling) stopAutoScroll(); scrollLeft(); });
-        scrollRightBtn.addEventListener('click', () => { if (isAutoScrolling) stopAutoScroll(); scrollRight(); });
+        function scrollLeft() { heatmapWrapper.scrollBy({ left: -300, behavior: 'smooth' }); }
+        function scrollRight() { heatmapWrapper.scrollBy({ left: 300, behavior: 'smooth' }); }
+        scrollLeftBtn.addEventListener('click', () => scrollLeft());
+        scrollRightBtn.addEventListener('click', () => scrollRight());
 
         async function fetchUserInfoWithAvatar(username, token) {
             const query = `query($username: String!) { user(login: $username) { name login createdAt bio location avatarUrl } }`;
@@ -490,21 +486,22 @@
             if (percent >= 100) setTimeout(() => progressBar.style.display = 'none', 1000);
         }
 
-        function splitDateRangeByYear(startDate, endDate) {
+        // 更精确的年份拆分：确保每个自然年及当年至今都正确聚合
+        function splitDateRangeByAccurateYears(startDateObj, endDateObj) {
             const ranges = [];
-            let currentStart = new Date(startDate);
-            const end = new Date(endDate);
+            let currentStart = new Date(startDateObj);
+            const end = new Date(endDateObj);
             while (currentStart <= end) {
-                let currentEnd = new Date(currentStart);
-                currentEnd.setDate(currentEnd.getDate() + 364);
+                let year = currentStart.getFullYear();
+                let currentEnd = new Date(year, 11, 31); // 当年12月31日
                 if (currentEnd > end) currentEnd = new Date(end);
                 ranges.push({
                     start: currentStart.toISOString().split('T')[0],
                     end: currentEnd.toISOString().split('T')[0],
-                    year: currentStart.getFullYear()
+                    year: year
                 });
-                currentStart = new Date(currentEnd);
-                currentStart.setDate(currentStart.getDate() + 1);
+                currentStart = new Date(year + 1, 0, 1);
+                if (currentStart > end) break;
             }
             return ranges;
         }
@@ -545,13 +542,13 @@
         async function fetchAllYears(username, token, createdAt) {
             const today = new Date();
             const startDate = new Date(createdAt);
-            const ranges = splitDateRangeByYear(startDate, today);
+            const ranges = splitDateRangeByAccurateYears(startDate, today);
             const yearlyTotals = [];
             let allMaps = [];
             let grandTotal = 0;
             for (let i = 0; i < ranges.length; i++) {
                 const range = ranges[i];
-                updateProgress(((i+1)/ranges.length)*100, `正在获取 ${range.year} 年`);
+                updateProgress(((i+1)/ranges.length)*100, `正在获取 ${range.year} 年贡献数据`);
                 const yearData = await fetchOneYear(username, range.start, range.end, token);
                 allMaps.push(yearData.map);
                 yearlyTotals.push({ year: range.year, total: yearData.total });
@@ -560,7 +557,7 @@
             const mergedMap = {};
             for (const m of allMaps) Object.assign(mergedMap, m);
             const activeDays = Object.values(mergedMap).filter(v => v > 0).length;
-            const maxDay = Math.max(...Object.values(mergedMap), 0);
+            const maxDay = Object.keys(mergedMap).length > 0 ? Math.max(...Object.values(mergedMap)) : 0;
             const totalDaysCount = Object.keys(mergedMap).length;
             const avgDaily = totalDaysCount > 0 ? (grandTotal / totalDaysCount).toFixed(1) : '0';
             
@@ -632,11 +629,16 @@
             if (trend > 10) summary += `<span class="trend-up">近期贡献量较前期增长 ${trend}% 📈，势头强劲！</span>`;
             else if (trend < -10) summary += `<span class="trend-down">近期贡献量较前期下降 ${Math.abs(trend)}% 📉，可以加把劲哦~</span>`;
             else summary += `近期贡献量与前期基本持平，稳定输出！`;
-            if (yearlyTotals.length >= 2) {
-                const lastYear = yearlyTotals[yearlyTotals.length-1].total;
-                const prevYear = yearlyTotals[yearlyTotals.length-2].total;
-                const yearTrend = prevYear > 0 ? ((lastYear - prevYear) / prevYear * 100).toFixed(1) : 0;
-                summary += `<br><br>🏆 最近一年贡献 ${lastYear.toLocaleString()} 次，较前一年 ${yearTrend > 0 ? '增长' : '下降'} ${Math.abs(yearTrend)}%。`;
+            if (yearlyTotals.length >= 1) {
+                const lastYearData = yearlyTotals[yearlyTotals.length-1];
+                summary += `<br><br>🏆 <strong>${lastYearData.year}年</strong> 贡献 ${lastYearData.total.toLocaleString()} 次，`;
+                if (yearlyTotals.length >= 2) {
+                    const prevYear = yearlyTotals[yearlyTotals.length-2].total;
+                    const yearTrend = prevYear > 0 ? ((lastYearData.total - prevYear) / prevYear * 100).toFixed(1) : 0;
+                    summary += `相较于 ${yearlyTotals[yearlyTotals.length-2].year} 年 ${yearTrend > 0 ? '增长' : '下降'} ${Math.abs(yearTrend)}%。`;
+                } else {
+                    summary += `这是完整的首年记录，继续保持！`;
+                }
             }
             document.getElementById('summaryText').innerHTML = summary;
             
@@ -657,7 +659,7 @@
             yearlyChart = new Chart(document.getElementById('yearlyChart'), {
                 type: 'bar',
                 data: { labels: yearlyTotals.map(y => y.year), datasets: [{ label: '贡献次数', data: yearlyTotals.map(y => y.total), backgroundColor: '#2da44e', borderRadius: 8 }] },
-                options: { responsive: true, maintainAspectRatio: true }
+                options: { responsive: true, maintainAspectRatio: true, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw.toLocaleString()} 次贡献` } } } }
             });
             if (monthlyChart) monthlyChart.destroy();
             monthlyChart = new Chart(document.getElementById('monthlyChart'), {
@@ -684,7 +686,7 @@
                 options: { responsive: true, maintainAspectRatio: true }
             });
             if (cumulativeChart) cumulativeChart.destroy();
-            const step = Math.max(1, Math.floor(cumulativeData.length / 10));
+            const step = Math.max(1, Math.floor(cumulativeData.length / 12));
             const cumuLabels = cumulativeData.filter((_, i) => i % step === 0).map(d => d.date);
             const cumuValues = cumulativeData.filter((_, i) => i % step === 0).map(d => d.total);
             cumulativeChart = new Chart(document.getElementById('cumulativeChart'), {
@@ -694,45 +696,8 @@
             });
         }
 
-        async function exportAsPNG() {
-            if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; }
-            showStatus('正在生成PNG...', false, 'info');
-            try {
-                const element = document.getElementById('reportContainer');
-                const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false });
-                const link = document.createElement('a');
-                link.download = `github_${usernameInput.value.trim()}_报告.png`;
-                link.href = canvasImg.toDataURL();
-                link.click();
-                showStatus('PNG导出成功！', false, 'success');
-            } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); }
-        }
-
-        async function exportAsPDF() {
-            if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; }
-            showStatus('正在生成PDF...', false, 'info');
-            try {
-                const element = document.getElementById('reportContainer');
-                const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false });
-                const { jsPDF } = window.jspdf;
-                const imgData = canvasImg.toDataURL('image/png');
-                const imgWidth = 210;
-                const pageHeight = 297;
-                const imgHeight = (canvasImg.height * imgWidth) / canvasImg.width;
-                let pdf = new jsPDF('p', 'mm', 'a4');
-                let position = 0;
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                let heightLeft = imgHeight - pageHeight;
-                while (heightLeft > 0) {
-                    position = heightLeft - imgHeight;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                    heightLeft -= pageHeight;
-                }
-                pdf.save(`github_${usernameInput.value.trim()}_报告.pdf`);
-                showStatus('PDF导出成功！', false, 'success');
-            } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); }
-        }
+        async function exportAsPNG() { /* 略作保持 */ if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PNG...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const link = document.createElement('a'); link.download = `github_${usernameInput.value.trim()}_报告.png`; link.href = canvasImg.toDataURL(); link.click(); showStatus('PNG导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
+        async function exportAsPDF() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PDF...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const { jsPDF } = window.jspdf; const imgData = canvasImg.toDataURL('image/png'); const imgWidth = 210; const pageHeight = 297; const imgHeight = (canvasImg.height * imgWidth) / canvasImg.width; let pdf = new jsPDF('p', 'mm', 'a4'); let position = 0; pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); let heightLeft = imgHeight - pageHeight; while (heightLeft > 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= pageHeight; } pdf.save(`github_${usernameInput.value.trim()}_报告.pdf`); showStatus('PDF导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
 
         async function loadAndDraw() {
             const username = usernameInput.value.trim();
@@ -744,45 +709,31 @@
             userInfoDiv.style.display = 'none';
             summaryCard.style.display = 'none';
             encouragementCard.style.display = 'none';
-            if (isAutoScrolling) stopAutoScroll();
-            
             try {
                 const userInfo = await fetchUserInfoWithAvatar(username, currentToken);
                 if (!userInfo) throw new Error(`用户 "${username}" 不存在`);
                 const createdAt = userInfo.createdAt;
                 const createdDate = new Date(createdAt).toLocaleDateString('zh-CN');
-                userInfoDiv.innerHTML = `
-                    <img class="user-avatar" src="${userInfo.avatarUrl}" alt="avatar">
-                    <div class="user-details">
-                        <div class="name">${userInfo.name || userInfo.login}</div>
-                        <div class="meta">@${userInfo.login} · 注册 ${createdDate} · ${userInfo.location || ''} ${userInfo.bio ? '· ' + userInfo.bio : ''}</div>
-                    </div>
-                `;
+                userInfoDiv.innerHTML = `<img class="user-avatar" src="${userInfo.avatarUrl}" alt="avatar"><div class="user-details"><div class="name">${userInfo.name || userInfo.login}</div><div class="meta">@${userInfo.login} · 注册 ${createdDate} · ${userInfo.location || ''} ${userInfo.bio ? '· ' + userInfo.bio : ''}</div></div>`;
                 userInfoDiv.style.display = 'flex';
-                
                 const result = await fetchAllYears(username, currentToken, createdAt);
                 currentReportData = result;
-                
                 const { contributionMap, total, activeDays, maxDay, avgDaily, longestStreak, startDate, endDate, totalYears } = result;
                 if (Object.keys(contributionMap).length === 0) { showStatus('该用户无任何贡献记录', true, 'error'); progressBar.style.display = 'none'; return; }
-                
                 drawHeatmapWithData(contributionMap, startDate, endDate);
-                
                 document.getElementById('statTotal').textContent = total.toLocaleString();
                 document.getElementById('statActiveDays').textContent = activeDays;
                 document.getElementById('statStreak').textContent = longestStreak;
                 document.getElementById('statAvg').textContent = avgDaily;
                 document.getElementById('statMaxDay').textContent = maxDay;
                 bigStatsDiv.style.display = 'flex';
-                
                 renderCharts(result);
                 chartsGrid.style.display = 'grid';
                 generateInsights(result, username, userInfo);
                 summaryCard.style.display = 'block';
                 encouragementCard.style.display = 'block';
-                
                 updateProgress(100, '完成！');
-                showStatus(`✅ 加载成功！共 ${totalYears} 年，总计 ${total} 次贡献`, false, 'success');
+                showStatus(`✅ 加载成功！共 ${totalYears} 个年度，总计 ${total} 次贡献（包含${new Date().getFullYear()}年数据）`, false, 'success');
             } catch (err) {
                 console.error(err);
                 showStatus(err.message, true, 'error');
@@ -799,11 +750,7 @@
         exportPNGBtn.addEventListener('click', exportAsPNG);
         exportPDFBtn.addEventListener('click', exportAsPDF);
         usernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') loadAndDraw(); });
-        saveTokenBtn.addEventListener('click', () => {
-            const newToken = tokenInput.value.trim();
-            if (newToken) { localStorage.setItem('github_token', newToken); currentToken = newToken; showStatus('Token已保存', false, 'success'); }
-            else { localStorage.removeItem('github_token'); currentToken = ''; showStatus('已清除Token', false, 'success'); }
-        });
+        saveTokenBtn.addEventListener('click', () => { const newToken = tokenInput.value.trim(); if (newToken) { localStorage.setItem('github_token', newToken); currentToken = newToken; showStatus('Token已保存', false, 'success'); } else { localStorage.removeItem('github_token'); currentToken = ''; showStatus('已清除Token', false, 'success'); } });
         
         let currentToken = localStorage.getItem('github_token') || '';
         if (currentToken && tokenInput) tokenInput.value = currentToken;
