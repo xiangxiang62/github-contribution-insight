@@ -245,6 +245,14 @@
     </div>
 
     <div class="stats-card" id="bigStats" style="display:none;">
+        <div class="big-stat">
+            <div class="number" id="registerDays">
+                    {userInfo?.createdAt
+                    ? Math.floor((new Date() - new Date(userInfo.createdAt)) / (1000 * 60 * 60 * 24))
+                    : 0}
+            </div>
+            <div class="label">注册天数</div>
+        </div>
         <div class="big-stat"><div class="number" id="statTotal">0</div><div class="label">总贡献数</div></div>
         <div class="big-stat"><div class="number" id="statActiveDays">0</div><div class="label">活跃天数</div></div>
         <div class="big-stat"><div class="number" id="statStreak">0</div><div class="label">最长连续贡献</div></div>
@@ -653,6 +661,21 @@
             document.getElementById('encouragementText').innerHTML = encouragement;
         }
 
+        // 计算并填充注册天数
+            function updateRegisterDays(createdAt) {
+                const registerDaysElement = document.getElementById('registerDays');
+
+                if (createdAt) {
+                    const createdAtDate = new Date(createdAt);
+                    const now = new Date();
+                    const diffTime = now - createdAtDate;
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                    registerDaysElement.textContent = diffDays;
+                } else {
+                    registerDaysElement.textContent = 0;
+                }
+            }
+
         function renderCharts(data) {
             const { yearlyTotals, monthlyData, weeklyData, levelCounts, quarterlyData, cumulativeData } = data;
             if (yearlyChart) yearlyChart.destroy();
@@ -727,6 +750,8 @@
                 document.getElementById('statAvg').textContent = avgDaily;
                 document.getElementById('statMaxDay').textContent = maxDay;
                 bigStatsDiv.style.display = 'flex';
+                // 调用函数更新数据
+                updateRegisterDays(createdAt);
                 renderCharts(result);
                 chartsGrid.style.display = 'grid';
                 generateInsights(result, username, userInfo);
