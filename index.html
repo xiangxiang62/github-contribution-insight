@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>GitHub 完整贡献看板 - 智能分析报告</title>
+    <title>GitHub 完整贡献看板 - 智能分析报告 (带悬浮提示)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -147,12 +147,37 @@
             cursor: grab;
             user-select: none;
             scroll-behavior: smooth;
+            position: relative;
         }
         .heatmap-wrapper:active { cursor: grabbing; }
         .heatmap-inner {
             display: inline-block;
             min-width: 100%;
+            position: relative;
         }
+        
+        /* Tooltip 样式 - 类似 GitHub 原生 */
+        .heatmap-tooltip {
+            position: fixed;
+            background: #1f2328f2;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            pointer-events: none;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+            font-family: monospace;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: opacity 0.1s ease;
+            opacity: 0;
+        }
+        .heatmap-tooltip.show {
+            opacity: 1;
+        }
+        
         canvas { background: white; border-radius: 12px; display: block; }
 
         .charts-grid {
@@ -208,7 +233,7 @@
 <body>
 <div class="container" id="reportContainer">
     <h1>📊 GitHub 完整贡献看板 <span style="font-size:0.8rem; background:#eef2f5; padding:4px 12px; border-radius:30px;">智能分析报告</span></h1>
-    <div class="sub">从注册到今天 · 热力图 + 年度对比 + 月度分布 + 智能总结 (完整包含今年数据)</div>
+    <div class="sub">从注册到今天 · 热力图 + 年度对比 + 月度分布 + 智能总结 (完整包含今年数据 · 鼠标悬浮显示贡献数)</div>
 
     <div class="export-btn-area no-print">
         <button class="export-btn" id="exportPNGBtn">📸 导出为 PNG</button>
@@ -299,7 +324,7 @@
         <div class="chart-card"><h3>📈 累计贡献增长</h3><canvas id="cumulativeChart"></canvas></div>
     </div>
 
-    <div class="footer-note no-print">🔍 回车生成报告 | 支持拖拽/自动滚动热力图 | 支持配色切换 | 年度统计包含当年完整贡献数据</div>
+    <div class="footer-note no-print">🔍 回车生成报告 | 支持拖拽/自动滚动热力图 | 支持配色切换 | 鼠标悬浮方块显示贡献次数</div>
 </div>
 
 <script>
@@ -327,8 +352,14 @@
         let yearlyChart, monthlyChart, weeklyChart, levelChart, quarterlyChart, cumulativeChart;
         let currentReportData = null;
         let currentColorScheme = 'github';
-        let autoScrollInterval = null;
-        let isAutoScrolling = false;
+        
+        // 存储每个方块对应的日期和贡献数, 用于悬浮
+        let cellsMetadata = []; // 每个元素 { x, y, width, height, date, count }
+        
+        // 创建悬浮tooltip元素
+        const tooltip = document.createElement('div');
+        tooltip.className = 'heatmap-tooltip';
+        document.body.appendChild(tooltip);
 
         const colorSchemes = {
             github: { 0: '#ebedf0', '1-4': '#9be9a8', '5-9': '#40c463', '10-19': '#30a14e', '20+': '#216e39' },
@@ -376,9 +407,9 @@
                 }
             });
         });
-        // 默认高亮github
         document.querySelector('.color-swatch[data-scheme="github"]').classList.add('active');
 
+        // 核心绘制 + 记录每个方块的区域信息用于悬浮
         function drawHeatmapWithData(contributionsMap, startDateStr, endDateStr) {
             const ctx = canvas.getContext('2d');
             let startDate = new Date(startDateStr);
@@ -417,6 +448,9 @@
             for (let i = 0; i < 7; i++) {
                 ctx.fillText(weekdays[i], 12, topMargin + monthLabelHeight + i * rowHeight + cellSize/2 + 2);
             }
+            
+            // 重置元数据
+            cellsMetadata = [];
             let current = new Date(startDate);
             let dayIdx = 0;
             while (current <= endDate) {
@@ -431,16 +465,73 @@
                 ctx.strokeStyle = "#e1e4e8";
                 ctx.lineWidth = 0.5;
                 ctx.strokeRect(x, y, cellSize, cellSize);
+                
+                // 存储元数据用于悬浮
+                cellsMetadata.push({
+                    x: x,
+                    y: y,
+                    width: cellSize,
+                    height: cellSize,
+                    date: dateKey,
+                    count: count
+                });
+                
                 current.setDate(current.getDate() + 1);
                 dayIdx++;
             }
+        }
+
+        // 鼠标悬浮检测 (基于canvas坐标)
+        function setupCanvasHover() {
+            const wrapper = document.getElementById('heatmapWrapper');
+            // 监听 canvas 上的鼠标移动
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;   // canvas 实际像素与CSS缩放比
+                const scaleY = canvas.height / rect.height;
+                
+                // 鼠标相对于 canvas 画布的实际坐标 (px)
+                const mouseX = (e.clientX - rect.left) * scaleX;
+                const mouseY = (e.clientY - rect.top) * scaleY;
+                
+                let hoveredCell = null;
+                for (const cell of cellsMetadata) {
+                    if (mouseX >= cell.x && mouseX <= cell.x + cell.width &&
+                        mouseY >= cell.y && mouseY <= cell.y + cell.height) {
+                        hoveredCell = cell;
+                        break;
+                    }
+                }
+                
+                if (hoveredCell) {
+                    const dateStr = hoveredCell.date;
+                    const count = hoveredCell.count;
+                    // 格式化日期 yyyy-mm-dd -> 更可读
+                    const formattedDate = new Date(dateStr).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+                    tooltip.innerHTML = `<strong>${formattedDate}</strong><br/>📌 贡献: ${count} 次`;
+                    tooltip.classList.add('show');
+                    // 定位 tooltip 在鼠标附近
+                    let left = e.clientX + 15;
+                    let top = e.clientY - 30;
+                    // 边界检测防止超出视口
+                    if (left + 160 > window.innerWidth) left = e.clientX - 170;
+                    if (top < 10) top = e.clientY + 20;
+                    tooltip.style.left = left + 'px';
+                    tooltip.style.top = top + 'px';
+                } else {
+                    tooltip.classList.remove('show');
+                }
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                tooltip.classList.remove('show');
+            });
         }
 
         // 手动拖拽滚动
         let isDragging = false;
         let startX, scrollLeftStart;
         heatmapWrapper.addEventListener('mousedown', (e) => {
-            if (isAutoScrolling) stopAutoScroll();
             isDragging = true;
             startX = e.pageX - heatmapWrapper.offsetLeft;
             scrollLeftStart = heatmapWrapper.scrollLeft;
@@ -492,14 +583,13 @@
             if (percent >= 100) setTimeout(() => progressBar.style.display = 'none', 1000);
         }
 
-        // 更精确的年份拆分：确保每个自然年及当年至今都正确聚合
         function splitDateRangeByAccurateYears(startDateObj, endDateObj) {
             const ranges = [];
             let currentStart = new Date(startDateObj);
             const end = new Date(endDateObj);
             while (currentStart <= end) {
                 let year = currentStart.getFullYear();
-                let currentEnd = new Date(year, 11, 31); // 当年12月31日
+                let currentEnd = new Date(year, 11, 31);
                 if (currentEnd > end) currentEnd = new Date(end);
                 ranges.push({
                     start: currentStart.toISOString().split('T')[0],
@@ -659,20 +749,17 @@
             document.getElementById('encouragementText').innerHTML = encouragement;
         }
 
-        // 计算并填充注册天数
-            function updateRegisterDays(createdAt) {
-                const registerDaysElement = document.getElementById('registerDays');
-
-                if (createdAt) {
-                    const createdAtDate = new Date(createdAt);
-                    const now = new Date();
-                    const diffTime = now - createdAtDate;
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                    registerDaysElement.textContent = diffDays;
-                } else {
-                    registerDaysElement.textContent = 0;
-                }
+        function updateRegisterDays(createdAt) {
+            const registerDaysElement = document.getElementById('registerDays');
+            if (createdAt) {
+                const createdAtDate = new Date(createdAt);
+                const now = new Date();
+                const diffDays = Math.floor((now - createdAtDate) / (1000 * 60 * 60 * 24));
+                registerDaysElement.textContent = diffDays;
+            } else {
+                registerDaysElement.textContent = 0;
             }
+        }
 
         function renderCharts(data) {
             const { yearlyTotals, monthlyData, weeklyData, levelCounts, quarterlyData, cumulativeData } = data;
@@ -717,7 +804,7 @@
             });
         }
 
-        async function exportAsPNG() { /* 略作保持 */ if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PNG...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const link = document.createElement('a'); link.download = `github_${usernameInput.value.trim()}_报告.png`; link.href = canvasImg.toDataURL(); link.click(); showStatus('PNG导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
+        async function exportAsPNG() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PNG...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const link = document.createElement('a'); link.download = `github_${usernameInput.value.trim()}_报告.png`; link.href = canvasImg.toDataURL(); link.click(); showStatus('PNG导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
         async function exportAsPDF() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PDF...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const { jsPDF } = window.jspdf; const imgData = canvasImg.toDataURL('image/png'); const imgWidth = 210; const pageHeight = 297; const imgHeight = (canvasImg.height * imgWidth) / canvasImg.width; let pdf = new jsPDF('p', 'mm', 'a4'); let position = 0; pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); let heightLeft = imgHeight - pageHeight; while (heightLeft > 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= pageHeight; } pdf.save(`github_${usernameInput.value.trim()}_报告.pdf`); showStatus('PDF导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
 
         async function loadAndDraw() {
@@ -742,13 +829,13 @@
                 const { contributionMap, total, activeDays, maxDay, avgDaily, longestStreak, startDate, endDate, totalYears } = result;
                 if (Object.keys(contributionMap).length === 0) { showStatus('该用户无任何贡献记录', true, 'error'); progressBar.style.display = 'none'; return; }
                 drawHeatmapWithData(contributionMap, startDate, endDate);
+                setupCanvasHover(); // 每次重绘后重新绑定悬浮事件（元数据已更新）
                 document.getElementById('statTotal').textContent = total.toLocaleString();
                 document.getElementById('statActiveDays').textContent = activeDays;
                 document.getElementById('statStreak').textContent = longestStreak;
                 document.getElementById('statAvg').textContent = avgDaily;
                 document.getElementById('statMaxDay').textContent = maxDay;
                 bigStatsDiv.style.display = 'flex';
-                // 调用函数更新数据
                 updateRegisterDays(createdAt);
                 renderCharts(result);
                 chartsGrid.style.display = 'grid';
