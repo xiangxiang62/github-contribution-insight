@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>GitHub 完整贡献看板 - 智能分析报告 (带悬浮提示)</title>
+    <title>代码贡献可视化看板 - 智能分析报告 (带悬浮提示)</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -65,8 +65,9 @@
             border-radius: 48px;
             align-items: center;
         }
+        .search-box select { padding: 12px 16px; font-size: 1rem; border: 1px solid #d0d7de; border-radius: 40px; background: white; cursor: pointer; }
         .search-box input { flex: 3; min-width: 180px; padding: 12px 18px; font-size: 1rem; border: 1px solid #d0d7de; border-radius: 40px; background: white; }
-        .search-box input:focus { outline: none; border-color: #0969da; box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2); }
+        .search-box input:focus, .search-box select:focus { outline: none; border-color: #0969da; box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2); }
         .search-box button { background: #2da44e; color: white; border: none; padding: 10px 24px; border-radius: 40px; font-weight: 600; cursor: pointer; }
         .search-box button:hover { background: #2c974b; }
 
@@ -232,8 +233,8 @@
 </head>
 <body>
 <div class="container" id="reportContainer">
-    <h1>📊 GitHub 完整贡献看板 <span style="font-size:0.8rem; background:#eef2f5; padding:4px 12px; border-radius:30px;">智能分析报告</span></h1>
-    <div class="sub">从注册到今天 · 热力图 + 年度对比 + 月度分布 + 智能总结 (完整包含今年数据 · 鼠标悬浮显示贡献数)</div>
+    <h1>📊 代码贡献可视化看板 <span style="font-size:0.8rem; background:#eef2f5; padding:4px 12px; border-radius:30px;">GitHub / Gitee 智能分析报告</span></h1>
+    <div class="sub">支持 GitHub 与 Gitee · 从注册到今天 · 热力图 + 年度对比 + 月度分布 + 智能总结 (完整包含今年数据 · 鼠标悬浮显示贡献数)</div>
 
     <div class="export-btn-area no-print">
         <button class="export-btn" id="exportPNGBtn">📸 导出为 PNG</button>
@@ -241,15 +242,19 @@
     </div>
 
     <div class="search-box no-print">
+        <select id="sourceSelect" aria-label="数据源">
+            <option value="github">GitHub</option>
+            <option value="gitee">Gitee</option>
+        </select>
         <input type="text" id="usernameInput" placeholder="GitHub 用户名" value="xiangxiang62">
         <button id="fetchBtn">✨ 生成完整报告</button>
     </div>
 
     <div class="token-section no-print">
-        <span>🔑 Personal Access Token (推荐):</span>
+        <span id="tokenLabel">🔑 GitHub Personal Access Token (推荐):</span>
         <input type="text" id="githubToken" placeholder="ghp_xxxxxxxxxxxx (无需任何权限)">
         <button id="saveTokenBtn">💾 保存</button>
-        <span style="font-size:12px;">⚠️ 未填Token可能遇限流</span>
+        <span id="tokenHint" style="font-size:12px;">⚠️ 未填Token可能遇限流</span>
     </div>
 
     <div id="userInfoDiv" class="user-info"></div>
@@ -334,7 +339,10 @@
         const fetchBtn = document.getElementById('fetchBtn');
         const statusDiv = document.getElementById('statusMsg');
         const canvas = document.getElementById('heatmapCanvas');
+        const sourceSelect = document.getElementById('sourceSelect');
         const tokenInput = document.getElementById('githubToken');
+        const tokenLabel = document.getElementById('tokenLabel');
+        const tokenHint = document.getElementById('tokenHint');
         const saveTokenBtn = document.getElementById('saveTokenBtn');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
@@ -352,6 +360,26 @@
         let yearlyChart, monthlyChart, weeklyChart, levelChart, quarterlyChart, cumulativeChart;
         let currentReportData = null;
         let currentColorScheme = 'github';
+        const sourceConfig = {
+            github: {
+                name: 'GitHub',
+                tokenKey: 'github_token',
+                placeholder: 'GitHub 用户名',
+                tokenPlaceholder: 'ghp_xxxxxxxxxxxx (无需任何权限)',
+                tokenLabel: '🔑 GitHub Personal Access Token (推荐):',
+                tokenHint: '⚠️ 未填Token可能遇限流',
+                defaultUsername: 'xiangxiang62'
+            },
+            gitee: {
+                name: 'Gitee',
+                tokenKey: 'gitee_token',
+                placeholder: 'Gitee 用户名',
+                tokenPlaceholder: 'Gitee Access Token (可选)',
+                tokenLabel: '🔑 Gitee Access Token (可选):',
+                tokenHint: '⚠️ Gitee 数据基于公开动态聚合，Token 可提升访问稳定性',
+                defaultUsername: ''
+            }
+        };
         
         // 存储每个方块对应的日期和贡献数, 用于悬浮
         let cellsMetadata = []; // 每个元素 { x, y, width, height, date, count }
@@ -567,6 +595,28 @@
             return result.data?.user;
         }
 
+        async function fetchGiteeUserInfo(username, token) {
+            const url = new URL(`https://gitee.com/api/v5/users/${encodeURIComponent(username)}`);
+            if (token) url.searchParams.set('access_token', token);
+            const response = await fetch(url.toString());
+            if (response.status === 404) return null;
+            if (!response.ok) throw new Error(`Gitee 用户信息获取失败：HTTP ${response.status}`);
+            const user = await response.json();
+            return {
+                name: user.name,
+                login: user.login || username,
+                createdAt: user.created_at,
+                bio: user.bio,
+                location: user.address || '',
+                avatarUrl: user.avatar_url
+            };
+        }
+
+        async function fetchUserInfo(source, username, token) {
+            if (source === 'gitee') return fetchGiteeUserInfo(username, token);
+            return fetchUserInfoWithAvatar(username, token);
+        }
+
         function showStatus(msg, isError, type = 'error') {
             statusDiv.textContent = msg;
             statusDiv.className = 'status ' + type;
@@ -602,6 +652,17 @@
             return ranges;
         }
 
+        function createEmptyContributionMap(startDateObj, endDateObj) {
+            const map = {};
+            const current = new Date(startDateObj);
+            const end = new Date(endDateObj);
+            while (current <= end) {
+                map[current.toISOString().split('T')[0]] = 0;
+                current.setDate(current.getDate() + 1);
+            }
+            return map;
+        }
+
         async function fetchOneYear(username, startDate, endDate, token) {
             const query = `query($username: String!, $from: DateTime!, $to: DateTime!) {
                 user(login: $username) {
@@ -635,23 +696,36 @@
             return { map: contributionMap, total: total };
         }
 
-        async function fetchAllYears(username, token, createdAt) {
-            const today = new Date();
-            const startDate = new Date(createdAt);
-            const ranges = splitDateRangeByAccurateYears(startDate, today);
-            const yearlyTotals = [];
-            let allMaps = [];
-            let grandTotal = 0;
-            for (let i = 0; i < ranges.length; i++) {
-                const range = ranges[i];
-                updateProgress(((i+1)/ranges.length)*100, `正在获取 ${range.year} 年贡献数据`);
-                const yearData = await fetchOneYear(username, range.start, range.end, token);
-                allMaps.push(yearData.map);
-                yearlyTotals.push({ year: range.year, total: yearData.total });
-                grandTotal += yearData.total;
+        async function fetchGiteeEvents(username, token, createdAt, today) {
+            const contributionMap = createEmptyContributionMap(new Date(createdAt), today);
+            let total = 0;
+            const perPage = 100;
+            const maxPages = 10;
+            for (let page = 1; page <= maxPages; page++) {
+                updateProgress((page / maxPages) * 80, `正在获取 Gitee 公开动态 第 ${page} 页`);
+                const url = new URL(`https://gitee.com/api/v5/users/${encodeURIComponent(username)}/events/public`);
+                url.searchParams.set('page', page);
+                url.searchParams.set('per_page', perPage);
+                if (token) url.searchParams.set('access_token', token);
+                const response = await fetch(url.toString());
+                if (!response.ok) throw new Error(`Gitee 公开动态获取失败：HTTP ${response.status}`);
+                const events = await response.json();
+                if (!Array.isArray(events) || events.length === 0) break;
+                for (const event of events) {
+                    const eventDate = event.created_at || event.createdAt;
+                    if (!eventDate) continue;
+                    const day = new Date(eventDate).toISOString().split('T')[0];
+                    if (Object.prototype.hasOwnProperty.call(contributionMap, day)) {
+                        contributionMap[day] += 1;
+                        total += 1;
+                    }
+                }
+                if (events.length < perPage) break;
             }
-            const mergedMap = {};
-            for (const m of allMaps) Object.assign(mergedMap, m);
+            return { map: contributionMap, total };
+        }
+
+        function buildStatsFromContributionMap(mergedMap, grandTotal, startDate, today, ranges) {
             const activeDays = Object.values(mergedMap).filter(v => v > 0).length;
             const maxDay = Object.keys(mergedMap).length > 0 ? Math.max(...Object.values(mergedMap)) : 0;
             const totalDaysCount = Object.keys(mergedMap).length;
@@ -707,6 +781,13 @@
                 else if (d >= new Date(ninetyDaysAgo.getTime() - 90*24*60*60*1000)) previousTotal += count;
             }
             const trend = previousTotal > 0 ? ((recentTotal - previousTotal) / previousTotal * 100).toFixed(1) : 0;
+            const yearlyTotals = ranges.map(range => {
+                let total = 0;
+                for (const [date, count] of Object.entries(mergedMap)) {
+                    if (date >= range.start && date <= range.end) total += count;
+                }
+                return { year: range.year, total };
+            });
             
             return { 
                 contributionMap: mergedMap, total: grandTotal, activeDays, maxDay, avgDaily, longestStreak,
@@ -714,6 +795,37 @@
                 yearlyTotals, monthlyData, weeklyData, levelCounts, quarterlyData, cumulativeData,
                 totalYears: ranges.length, recentTotal, previousTotal, trend
             };
+        }
+
+        async function fetchAllYears(username, token, createdAt) {
+            const today = new Date();
+            const startDate = new Date(createdAt);
+            const ranges = splitDateRangeByAccurateYears(startDate, today);
+            let allMaps = [];
+            let grandTotal = 0;
+            for (let i = 0; i < ranges.length; i++) {
+                const range = ranges[i];
+                updateProgress(((i+1)/ranges.length)*100, `正在获取 ${range.year} 年贡献数据`);
+                const yearData = await fetchOneYear(username, range.start, range.end, token);
+                allMaps.push(yearData.map);
+                grandTotal += yearData.total;
+            }
+            const mergedMap = {};
+            for (const m of allMaps) Object.assign(mergedMap, m);
+            return buildStatsFromContributionMap(mergedMap, grandTotal, startDate, today, ranges);
+        }
+
+        async function fetchGiteeAllYears(username, token, createdAt) {
+            const today = new Date();
+            const startDate = new Date(createdAt);
+            const ranges = splitDateRangeByAccurateYears(startDate, today);
+            const eventsData = await fetchGiteeEvents(username, token, createdAt, today);
+            return buildStatsFromContributionMap(eventsData.map, eventsData.total, startDate, today, ranges);
+        }
+
+        async function fetchAllSourceData(source, username, token, createdAt) {
+            if (source === 'gitee') return fetchGiteeAllYears(username, token, createdAt);
+            return fetchAllYears(username, token, createdAt);
         }
 
         function generateInsights(data, username, userInfo) {
@@ -804,12 +916,14 @@
             });
         }
 
-        async function exportAsPNG() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PNG...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const link = document.createElement('a'); link.download = `github_${usernameInput.value.trim()}_报告.png`; link.href = canvasImg.toDataURL(); link.click(); showStatus('PNG导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
-        async function exportAsPDF() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PDF...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const { jsPDF } = window.jspdf; const imgData = canvasImg.toDataURL('image/png'); const imgWidth = 210; const pageHeight = 297; const imgHeight = (canvasImg.height * imgWidth) / canvasImg.width; let pdf = new jsPDF('p', 'mm', 'a4'); let position = 0; pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); let heightLeft = imgHeight - pageHeight; while (heightLeft > 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= pageHeight; } pdf.save(`github_${usernameInput.value.trim()}_报告.pdf`); showStatus('PDF导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
+        async function exportAsPNG() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PNG...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const link = document.createElement('a'); link.download = `${sourceSelect.value}_${usernameInput.value.trim()}_报告.png`; link.href = canvasImg.toDataURL(); link.click(); showStatus('PNG导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
+        async function exportAsPDF() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PDF...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const { jsPDF } = window.jspdf; const imgData = canvasImg.toDataURL('image/png'); const imgWidth = 210; const pageHeight = 297; const imgHeight = (canvasImg.height * imgWidth) / canvasImg.width; let pdf = new jsPDF('p', 'mm', 'a4'); let position = 0; pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); let heightLeft = imgHeight - pageHeight; while (heightLeft > 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= pageHeight; } pdf.save(`${sourceSelect.value}_${usernameInput.value.trim()}_报告.pdf`); showStatus('PDF导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
 
         async function loadAndDraw() {
             const username = usernameInput.value.trim();
-            if (!username) { showStatus('请输入GitHub用户名', true, 'error'); return; }
+            const source = sourceSelect.value;
+            const platformName = sourceConfig[source].name;
+            if (!username) { showStatus(`请输入${platformName}用户名`, true, 'error'); return; }
             progressBar.style.display = 'block';
             progressFill.style.width = '0%';
             bigStatsDiv.style.display = 'none';
@@ -818,13 +932,13 @@
             summaryCard.style.display = 'none';
             encouragementCard.style.display = 'none';
             try {
-                const userInfo = await fetchUserInfoWithAvatar(username, currentToken);
-                if (!userInfo) throw new Error(`用户 "${username}" 不存在`);
+                const userInfo = await fetchUserInfo(source, username, currentToken);
+                if (!userInfo) throw new Error(`${platformName} 用户 "${username}" 不存在`);
                 const createdAt = userInfo.createdAt;
                 const createdDate = new Date(createdAt).toLocaleDateString('zh-CN');
                 userInfoDiv.innerHTML = `<img class="user-avatar" src="${userInfo.avatarUrl}" alt="avatar"><div class="user-details"><div class="name">${userInfo.name || userInfo.login}</div><div class="meta">@${userInfo.login} · 注册 ${createdDate} · ${userInfo.location || ''} ${userInfo.bio ? '· ' + userInfo.bio : ''}</div></div>`;
                 userInfoDiv.style.display = 'flex';
-                const result = await fetchAllYears(username, currentToken, createdAt);
+                const result = await fetchAllSourceData(source, username, currentToken, createdAt);
                 currentReportData = result;
                 const { contributionMap, total, activeDays, maxDay, avgDaily, longestStreak, startDate, endDate, totalYears } = result;
                 if (Object.keys(contributionMap).length === 0) { showStatus('该用户无任何贡献记录', true, 'error'); progressBar.style.display = 'none'; return; }
@@ -843,7 +957,7 @@
                 summaryCard.style.display = 'block';
                 encouragementCard.style.display = 'block';
                 updateProgress(100, '完成！');
-                showStatus(`✅ 加载成功！共 ${totalYears} 个年度，总计 ${total} 次贡献（包含${new Date().getFullYear()}年数据）`, false, 'success');
+                showStatus(`✅ ${platformName} 加载成功！共 ${totalYears} 个年度，总计 ${total} 次贡献（包含${new Date().getFullYear()}年数据）`, false, 'success');
             } catch (err) {
                 console.error(err);
                 showStatus(err.message, true, 'error');
@@ -860,10 +974,29 @@
         exportPNGBtn.addEventListener('click', exportAsPNG);
         exportPDFBtn.addEventListener('click', exportAsPDF);
         usernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') loadAndDraw(); });
-        saveTokenBtn.addEventListener('click', () => { const newToken = tokenInput.value.trim(); if (newToken) { localStorage.setItem('github_token', newToken); currentToken = newToken; showStatus('Token已保存', false, 'success'); } else { localStorage.removeItem('github_token'); currentToken = ''; showStatus('已清除Token', false, 'success'); } });
+        saveTokenBtn.addEventListener('click', () => { const newToken = tokenInput.value.trim(); const cfg = sourceConfig[sourceSelect.value]; if (newToken) { localStorage.setItem(cfg.tokenKey, newToken); currentToken = newToken; showStatus(`${cfg.name} Token已保存`, false, 'success'); } else { localStorage.removeItem(cfg.tokenKey); currentToken = ''; showStatus(`已清除${cfg.name} Token`, false, 'success'); } });
         
-        let currentToken = localStorage.getItem('github_token') || '';
-        if (currentToken && tokenInput) tokenInput.value = currentToken;
+        let currentToken = '';
+
+        function syncSourceUI() {
+            const cfg = sourceConfig[sourceSelect.value];
+            usernameInput.placeholder = cfg.placeholder;
+            if (!usernameInput.value.trim() || usernameInput.value.trim() === sourceConfig.github.defaultUsername || usernameInput.value.trim() === sourceConfig.gitee.defaultUsername) {
+                usernameInput.value = cfg.defaultUsername;
+            }
+            tokenInput.placeholder = cfg.tokenPlaceholder;
+            tokenLabel.textContent = cfg.tokenLabel;
+            tokenHint.textContent = cfg.tokenHint;
+            currentToken = localStorage.getItem(cfg.tokenKey) || '';
+            tokenInput.value = currentToken;
+        }
+
+        sourceSelect.addEventListener('change', () => {
+            currentReportData = null;
+            syncSourceUI();
+            showStatus(`已切换到 ${sourceConfig[sourceSelect.value].name} 数据源`, false, 'info');
+        });
+        syncSourceUI();
         
         setTimeout(() => { if (usernameInput.value) loadAndDraw(); }, 200);
     })();
