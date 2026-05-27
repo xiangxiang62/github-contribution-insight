@@ -1,6 +1,6 @@
 # 📊 Contribution Insight
 
-一个支持 **GitHub / Gitee** 的代码贡献数据可视化看板。输入用户名后，即可生成贡献热力图、公开仓库影响力、多维度统计图表、行动洞察、智能总结，并支持导出 PNG、PDF 或 CSV 数据。
+一个支持 **GitHub / Gitee** 的代码贡献数据可视化看板。输入用户名后，即可生成贡献热力图、公开仓库影响力、年度进度、多维度统计图表、行动洞察、智能总结，并支持导出 PNG、PDF 或 CSV 数据。
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-f7df1e?logo=javascript)
@@ -29,9 +29,10 @@
 | 📊 **贡献热力图** | 按日期展示贡献活跃度，支持横向拖拽滚动和悬浮提示 |
 | 📈 **多维度图表** | 年度对比、月度趋势、周活跃雷达、季度分布、累计曲线、贡献等级 |
 | 🧭 **行动洞察** | 自动识别当前连续贡献、近 30 天活跃率、最高产月份/星期和贡献高峰日 |
+| 🎯 **年度进度预测** | 展示今年已贡献、全年预测、去年完成度和追平去年差距 |
 | 🎨 **多配色主题** | 内置 GitHub 绿、日落橙、清新绿松、热情红、深海蓝等配色 |
 | 📸 **导出分享** | 一键导出 PNG 图片、PDF 报告或 CSV 原始日历数据，适合存档、分享和二次分析 |
-| 🤖 **智能总结** | 基于统计数据生成个性化数据总结和鼓励寄语 |
+| 🤖 **智能总结** | 基于统计数据生成个性化数据总结 |
 | 🔐 **Token 支持** | GitHub / Gitee Token 独立保存，可提升 API 访问稳定性 |
 
 ---
@@ -45,6 +46,22 @@
 ## 🚀 在线访问
 
 在线预览：[https://github-contribution-insight.vercel.app/](https://github-contribution-insight.vercel.app/)
+
+---
+
+## 🗂️ 项目结构
+
+```text
+.
+├── index.html              # 页面结构与第三方 CDN 依赖
+├── assets/
+│   ├── css/styles.css      # 页面样式
+│   └── js/app.js           # 数据请求、图表渲染、导出逻辑
+├── vercel.json             # Vercel 静态站点路由配置
+└── README.md
+```
+
+本项目是纯静态站点，不需要构建步骤。部署到 Vercel 时使用默认静态部署即可，入口文件为根目录 `index.html`。
 
 ---
 
@@ -123,7 +140,7 @@ https://gitee.com/api/v5/users/{username}/repos
 - **PDF 导出**：将整个报告保存为多页 PDF 文档（自动分页）
 - **CSV 导出**：导出每日贡献明细，字段为 `date,contributions`，便于在 Excel、Numbers 或 BI 工具中继续分析
 
-导出内容包含：用户信息卡片、KPI 指标、热力图、所有统计图表、智能总结和鼓励寄语。
+导出内容包含：用户信息卡片、公开影响力、KPI 指标、年度进度、热力图、所有统计图表和智能总结。
 
 ---
 
