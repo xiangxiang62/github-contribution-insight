@@ -13,8 +13,10 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
-            background: #f6f8fa;
+            font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(45, 164, 78, 0.16), transparent 32rem),
+                linear-gradient(135deg, #f4f8f4 0%, #eef4ff 48%, #fff8ed 100%);
             margin: 0;
             padding: 24px 16px;
             color: #1f2328;
@@ -25,7 +27,7 @@
             margin: 0 auto;
             background: white;
             border-radius: 24px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 24px 60px rgba(31, 35, 40, 0.10);
             padding: 24px 20px 32px;
         }
 
@@ -36,8 +38,22 @@
             .charts-grid, .chart-card, .stats-card, .user-info, .insight-card { break-inside: avoid; page-break-inside: avoid; }
         }
 
-        h1 { font-size: 1.8rem; font-weight: 600; margin: 0 0 0.25rem; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .sub { color: #57606a; margin-bottom: 28px; border-left: 3px solid #2da44e; padding-left: 12px; font-size: 0.9rem; }
+        .hero {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 24px;
+            align-items: start;
+            margin-bottom: 22px;
+            padding: 28px;
+            border-radius: 28px;
+            background:
+                linear-gradient(135deg, rgba(9, 105, 218, 0.10), rgba(45, 164, 78, 0.12)),
+                #f6f8fa;
+            border: 1px solid #d8dee4;
+        }
+        h1 { font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1.05; font-weight: 750; margin: 0 0 0.75rem; letter-spacing: -0.04em; }
+        .title-badge { font-size:0.8rem; background:#ffffffcc; border: 1px solid #d8dee4; padding:5px 12px; border-radius:30px; letter-spacing: 0; white-space: nowrap; }
+        .sub { color: #57606a; margin: 0; max-width: 760px; font-size: 1rem; line-height: 1.65; }
 
         .user-info {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -59,11 +75,12 @@
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-            margin-bottom: 20px;
-            background: #f6f8fa;
-            padding: 16px 20px;
-            border-radius: 48px;
+            margin-bottom: 16px;
+            background: #ffffffd9;
+            padding: 14px;
+            border-radius: 24px;
             align-items: center;
+            border: 1px solid #d8dee4;
         }
         .search-box select { padding: 12px 16px; font-size: 1rem; border: 1px solid #d0d7de; border-radius: 40px; background: white; cursor: pointer; }
         .search-box input { flex: 3; min-width: 180px; padding: 12px 18px; font-size: 1rem; border: 1px solid #d0d7de; border-radius: 40px; background: white; }
@@ -85,7 +102,7 @@
         .token-section input { flex: 2; padding: 8px 14px; border-radius: 40px; border: 1px solid #d0d7de; font-family: monospace; }
         .token-section button { background: #eef2f5; border: none; border-radius: 40px; padding: 6px 18px; cursor: pointer; }
 
-        .export-btn-area { display: flex; justify-content: flex-end; margin-bottom: 20px; gap: 12px; }
+        .export-btn-area { display: flex; justify-content: flex-end; margin-bottom: 0; gap: 12px; flex-wrap: wrap; }
         .export-btn { background: #0969da; color: white; border: none; padding: 10px 20px; border-radius: 40px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
         .export-btn:hover { background: #0550ae; transform: scale(0.98); }
         .export-btn.pdf { background: #d73a49; }
@@ -207,6 +224,143 @@
         .big-stat .number { font-size: 2rem; font-weight: 700; }
         .big-stat .label { font-size: 0.8rem; opacity: 0.9; margin-top: 4px; }
 
+        .action-insights {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+        .action-item {
+            background: #f6f8fa;
+            border: 1px solid #d8dee4;
+            border-radius: 18px;
+            padding: 14px 16px;
+        }
+        .action-item .label {
+            color: #57606a;
+            font-size: 0.78rem;
+            margin-bottom: 6px;
+        }
+        .action-item .value {
+            color: #1f2328;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+        .action-item .hint {
+            color: #6e7781;
+            font-size: 0.78rem;
+            line-height: 1.45;
+            margin-top: 6px;
+        }
+
+        .section-title {
+            display: none;
+            align-items: end;
+            justify-content: space-between;
+            gap: 16px;
+            margin: 26px 0 14px;
+        }
+        .section-title h2 {
+            font-size: 1.15rem;
+            margin: 0;
+        }
+        .section-title span {
+            color: #6e7781;
+            font-size: 0.82rem;
+        }
+        .profile-extras {
+            display: none;
+            grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 1fr);
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .profile-card {
+            background: #0f172a;
+            color: #e2e8f0;
+            border-radius: 22px;
+            padding: 18px;
+            overflow: hidden;
+            position: relative;
+        }
+        .profile-card::after {
+            content: "";
+            position: absolute;
+            inset: auto -40px -70px auto;
+            width: 180px;
+            height: 180px;
+            border-radius: 999px;
+            background: rgba(45, 164, 78, 0.22);
+        }
+        .profile-card h3,
+        .repo-list h3 {
+            margin: 0 0 14px;
+            font-size: 1rem;
+        }
+        .impact-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        .impact-metric {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 16px;
+            padding: 12px;
+        }
+        .impact-metric strong {
+            display: block;
+            color: #fff;
+            font-size: 1.35rem;
+            margin-bottom: 4px;
+        }
+        .impact-metric span {
+            color: #cbd5e1;
+            font-size: 0.76rem;
+        }
+        .language-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+            position: relative;
+            z-index: 1;
+        }
+        .language-pills span {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-size: 0.78rem;
+        }
+        .repo-list {
+            background: #f6f8fa;
+            border: 1px solid #d8dee4;
+            border-radius: 22px;
+            padding: 18px;
+        }
+        .repo-item {
+            display: grid;
+            gap: 5px;
+            padding: 10px 0;
+            border-top: 1px solid #d8dee4;
+        }
+        .repo-item:first-of-type {
+            border-top: 0;
+            padding-top: 0;
+        }
+        .repo-item a {
+            color: #0969da;
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .repo-item a:hover { text-decoration: underline; }
+        .repo-meta {
+            color: #57606a;
+            font-size: 0.78rem;
+        }
+
         .insight-card {
             background: linear-gradient(135deg, #f5f0ff 0%, #e8f0fe 100%);
             border-radius: 20px;
@@ -226,6 +380,11 @@
 
         @media (max-width: 640px) {
             .container { padding: 16px; }
+            .hero { grid-template-columns: 1fr; padding: 20px; }
+            .export-btn-area { justify-content: stretch; }
+            .export-btn { flex: 1; justify-content: center; }
+            .profile-extras { grid-template-columns: 1fr; }
+            .impact-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .big-stat .number { font-size: 1.5rem; }
             .charts-grid { grid-template-columns: 1fr; }
         }
@@ -233,13 +392,17 @@
 </head>
 <body>
 <div class="container" id="reportContainer">
-    <h1>📊 代码贡献可视化看板 <span style="font-size:0.8rem; background:#eef2f5; padding:4px 12px; border-radius:30px;">GitHub / Gitee 智能分析报告</span></h1>
-    <div class="sub">支持 GitHub 与 Gitee · 从注册到今天 · 热力图 + 年度对比 + 月度分布 + 智能总结 (完整包含今年数据 · 鼠标悬浮显示贡献数)</div>
-
-    <div class="export-btn-area no-print">
-        <button class="export-btn" id="exportPNGBtn">📸 导出为 PNG</button>
-        <button class="export-btn pdf" id="exportPDFBtn">📄 导出为 PDF</button>
-    </div>
+    <header class="hero">
+        <div>
+            <h1>代码贡献可视化看板 <span class="title-badge">GitHub / Gitee 智能分析报告</span></h1>
+            <p class="sub">从公开贡献、仓库影响力和活跃节奏三个维度生成开发者画像。输入用户名后自动拉取贡献日历与公开仓库数据，生成热力图、图表、行动洞察和可导出报告。</p>
+        </div>
+        <div class="export-btn-area no-print">
+            <button class="export-btn" id="exportPNGBtn">📸 PNG</button>
+            <button class="export-btn pdf" id="exportPDFBtn">📄 PDF</button>
+            <button class="export-btn" id="exportCSVBtn">📊 CSV</button>
+        </div>
+    </header>
 
     <div class="search-box no-print">
         <select id="sourceSelect" aria-label="数据源">
@@ -258,6 +421,12 @@
     </div>
 
     <div id="userInfoDiv" class="user-info"></div>
+
+    <div class="section-title" id="profileSectionTitle">
+        <h2>公开影响力</h2>
+        <span>来自公开用户资料与仓库列表，失败不影响贡献报告</span>
+    </div>
+    <div class="profile-extras" id="profileExtras"></div>
 
     <div class="progress-bar no-print" id="progressBar">
         <div class="progress-fill" id="progressFill">0%</div>
@@ -287,6 +456,8 @@
         <div class="big-stat"><div class="number" id="statAvg">0</div><div class="label">日均贡献</div></div>
         <div class="big-stat"><div class="number" id="statMaxDay">0</div><div class="label">单日最高</div></div>
     </div>
+
+    <div class="action-insights" id="actionInsights"></div>
 
     <div class="heatmap-controls no-print">
         <div class="color-picker">
@@ -353,9 +524,13 @@
         const encouragementCard = document.getElementById('encouragementCard');
         const exportPNGBtn = document.getElementById('exportPNGBtn');
         const exportPDFBtn = document.getElementById('exportPDFBtn');
+        const exportCSVBtn = document.getElementById('exportCSVBtn');
         const scrollLeftBtn = document.getElementById('scrollLeftBtn');
         const scrollRightBtn = document.getElementById('scrollRightBtn');
         const heatmapWrapper = document.getElementById('heatmapWrapper');
+        const actionInsights = document.getElementById('actionInsights');
+        const profileSectionTitle = document.getElementById('profileSectionTitle');
+        const profileExtras = document.getElementById('profileExtras');
 
         let yearlyChart, monthlyChart, weeklyChart, levelChart, quarterlyChart, cumulativeChart;
         let currentReportData = null;
@@ -617,6 +792,139 @@
             return fetchUserInfoWithAvatar(username, token);
         }
 
+        async function fetchGitHubPublicRepos(username, token) {
+            const headers = { 'Accept': 'application/vnd.github+json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const url = new URL(`https://api.github.com/users/${encodeURIComponent(username)}/repos`);
+            url.searchParams.set('per_page', '100');
+            url.searchParams.set('sort', 'updated');
+            const response = await fetch(url.toString(), { headers });
+            if (!response.ok) throw new Error(`GitHub 仓库列表获取失败：HTTP ${response.status}`);
+            const repos = await response.json();
+            return repos.map(repo => ({
+                name: repo.name,
+                description: repo.description || '',
+                url: repo.html_url,
+                stars: repo.stargazers_count || 0,
+                forks: repo.forks_count || 0,
+                language: repo.language || 'Other',
+                updatedAt: repo.updated_at,
+                isFork: repo.fork
+            }));
+        }
+
+        async function fetchGiteePublicRepos(username, token) {
+            const url = new URL(`https://gitee.com/api/v5/users/${encodeURIComponent(username)}/repos`);
+            url.searchParams.set('page', '1');
+            url.searchParams.set('per_page', '100');
+            url.searchParams.set('sort', 'updated');
+            if (token) url.searchParams.set('access_token', token);
+            const response = await fetch(url.toString());
+            if (!response.ok) throw new Error(`Gitee 仓库列表获取失败：HTTP ${response.status}`);
+            const repos = await response.json();
+            return repos.map(repo => ({
+                name: repo.name || repo.path,
+                description: repo.description || '',
+                url: repo.html_url || repo.url,
+                stars: repo.stargazers_count || repo.stars_count || 0,
+                forks: repo.forks_count || 0,
+                language: repo.language || 'Other',
+                updatedAt: repo.updated_at || repo.pushed_at,
+                isFork: Boolean(repo.fork)
+            }));
+        }
+
+        async function fetchPublicRepos(source, username, token) {
+            if (source === 'gitee') return fetchGiteePublicRepos(username, token);
+            return fetchGitHubPublicRepos(username, token);
+        }
+
+        function summarizeRepos(repos) {
+            const sourceRepos = repos.filter(repo => !repo.isFork);
+            const totalStars = repos.reduce((sum, repo) => sum + repo.stars, 0);
+            const totalForks = repos.reduce((sum, repo) => sum + repo.forks, 0);
+            const languageCounts = {};
+            repos.forEach(repo => {
+                languageCounts[repo.language] = (languageCounts[repo.language] || 0) + 1;
+            });
+            const topLanguages = Object.entries(languageCounts)
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .slice(0, 5)
+                .map(([language, count]) => ({ language, count }));
+            const topRepos = [...repos]
+                .sort((a, b) => b.stars - a.stars || new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
+                .slice(0, 4);
+            const latestRepo = [...repos]
+                .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+            return { sourceRepos, totalStars, totalForks, topLanguages, topRepos, latestRepo };
+        }
+
+        function renderProfileExtras(repos) {
+            if (!Array.isArray(repos) || repos.length === 0) {
+                profileSectionTitle.style.display = 'flex';
+                profileExtras.style.display = 'grid';
+                profileExtras.innerHTML = `
+                    <div class="repo-list">
+                        <h3>公开仓库</h3>
+                        <div class="repo-meta">没有读取到公开仓库，或当前平台未返回仓库列表。</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const summary = summarizeRepos(repos);
+            const languagePills = summary.topLanguages.length
+                ? summary.topLanguages.map(item => `<span>${item.language} · ${item.count}</span>`).join('')
+                : '<span>暂无语言数据</span>';
+            const latestUpdated = summary.latestRepo?.updatedAt
+                ? new Date(summary.latestRepo.updatedAt).toLocaleDateString('zh-CN')
+                : '未知';
+            const topRepoItems = summary.topRepos.map(repo => `
+                <div class="repo-item">
+                    <a href="${repo.url}" target="_blank" rel="noopener noreferrer">${repo.name}</a>
+                    <div class="repo-meta">${repo.description || '暂无描述'}</div>
+                    <div class="repo-meta">★ ${repo.stars.toLocaleString()} · Fork ${repo.forks.toLocaleString()} · ${repo.language} · 更新 ${repo.updatedAt ? new Date(repo.updatedAt).toLocaleDateString('zh-CN') : '未知'}</div>
+                </div>
+            `).join('');
+
+            profileExtras.innerHTML = `
+                <div class="profile-card">
+                    <h3>公开仓库影响力</h3>
+                    <div class="impact-grid">
+                        <div class="impact-metric"><strong>${repos.length}</strong><span>公开仓库</span></div>
+                        <div class="impact-metric"><strong>${summary.sourceRepos.length}</strong><span>原创仓库</span></div>
+                        <div class="impact-metric"><strong>${summary.totalStars.toLocaleString()}</strong><span>累计 Star</span></div>
+                        <div class="impact-metric"><strong>${summary.totalForks.toLocaleString()}</strong><span>累计 Fork</span></div>
+                    </div>
+                    <div class="language-pills">${languagePills}</div>
+                </div>
+                <div class="repo-list">
+                    <h3>代表仓库</h3>
+                    ${topRepoItems}
+                    <div class="repo-meta">最近更新仓库：${summary.latestRepo?.name || '未知'} · ${latestUpdated}</div>
+                </div>
+            `;
+            profileSectionTitle.style.display = 'flex';
+            profileExtras.style.display = 'grid';
+        }
+
+        async function loadProfileExtras(source, username, token) {
+            try {
+                const repos = await fetchPublicRepos(source, username, token);
+                renderProfileExtras(repos);
+            } catch (err) {
+                console.warn(err);
+                profileSectionTitle.style.display = 'flex';
+                profileExtras.style.display = 'grid';
+                profileExtras.innerHTML = `
+                    <div class="repo-list">
+                        <h3>公开仓库</h3>
+                        <div class="repo-meta">${err.message}。贡献报告仍可继续使用。</div>
+                    </div>
+                `;
+            }
+        }
+
         function showStatus(msg, isError, type = 'error') {
             statusDiv.textContent = msg;
             statusDiv.className = 'status ' + type;
@@ -797,6 +1105,87 @@
             };
         }
 
+        function calculateCurrentStreak(map, endDateStr) {
+            let streak = 0;
+            const current = new Date(endDateStr);
+            const todayKey = current.toISOString().split('T')[0];
+            if ((map[todayKey] || 0) <= 0) {
+                current.setDate(current.getDate() - 1);
+            }
+            while (true) {
+                const key = current.toISOString().split('T')[0];
+                if ((map[key] || 0) <= 0) break;
+                streak++;
+                current.setDate(current.getDate() - 1);
+            }
+            return streak;
+        }
+
+        function getTopContributionDays(map, limit = 3) {
+            return Object.entries(map)
+                .filter(([, count]) => count > 0)
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                .slice(0, limit)
+                .map(([date, count]) => ({ date, count }));
+        }
+
+        function getRecentActivityRate(map, endDateStr, days = 30) {
+            let active = 0;
+            let total = 0;
+            const current = new Date(endDateStr);
+            for (let i = 0; i < days; i++) {
+                const key = current.toISOString().split('T')[0];
+                if (Object.prototype.hasOwnProperty.call(map, key)) {
+                    total++;
+                    if ((map[key] || 0) > 0) active++;
+                }
+                current.setDate(current.getDate() - 1);
+            }
+            return total > 0 ? Math.round((active / total) * 100) : 0;
+        }
+
+        function renderActionInsights(data) {
+            const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+            const weekNames = ['周日','周一','周二','周三','周四','周五','周六'];
+            const bestMonthIndex = data.monthlyData.indexOf(Math.max(...data.monthlyData));
+            const bestWeekIndex = data.weeklyData.indexOf(Math.max(...data.weeklyData));
+            const currentStreak = calculateCurrentStreak(data.contributionMap, data.endDate);
+            const topDays = getTopContributionDays(data.contributionMap);
+            const recentActivityRate = getRecentActivityRate(data.contributionMap, data.endDate);
+            const topDaysText = topDays.length
+                ? topDays.map(item => `${item.date} (${item.count})`).join('、')
+                : '暂无活跃日期';
+
+            actionInsights.innerHTML = `
+                <div class="action-item">
+                    <div class="label">当前连续贡献</div>
+                    <div class="value">${currentStreak} 天</div>
+                    <div class="hint">${currentStreak > 0 ? '最近一次连续贡献仍在延续中，今天还来得及继续点亮。' : '连续记录已暂停，下一次提交就是新的开始。'}</div>
+                </div>
+                <div class="action-item">
+                    <div class="label">近 30 天活跃率</div>
+                    <div class="value">${recentActivityRate}%</div>
+                    <div class="hint">按近 30 天中有贡献的日期占比计算。</div>
+                </div>
+                <div class="action-item">
+                    <div class="label">最高产月份</div>
+                    <div class="value">${monthNames[bestMonthIndex]}</div>
+                    <div class="hint">累计 ${data.monthlyData[bestMonthIndex].toLocaleString()} 次贡献。</div>
+                </div>
+                <div class="action-item">
+                    <div class="label">最高产星期</div>
+                    <div class="value">${weekNames[bestWeekIndex]}</div>
+                    <div class="hint">累计 ${data.weeklyData[bestWeekIndex].toLocaleString()} 次贡献。</div>
+                </div>
+                <div class="action-item">
+                    <div class="label">贡献高峰日</div>
+                    <div class="value">${data.maxDay} 次</div>
+                    <div class="hint">${topDaysText}</div>
+                </div>
+            `;
+            actionInsights.style.display = 'grid';
+        }
+
         async function fetchAllYears(username, token, createdAt) {
             const today = new Date();
             const startDate = new Date(createdAt);
@@ -919,6 +1308,25 @@
         async function exportAsPNG() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PNG...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const link = document.createElement('a'); link.download = `${sourceSelect.value}_${usernameInput.value.trim()}_报告.png`; link.href = canvasImg.toDataURL(); link.click(); showStatus('PNG导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
         async function exportAsPDF() { if (!currentReportData) { showStatus('请先生成报告再导出', true, 'error'); return; } showStatus('正在生成PDF...', false, 'info'); try { const element = document.getElementById('reportContainer'); const canvasImg = await html2canvas(element, { scale: 2, backgroundColor: '#ffffff', logging: false }); const { jsPDF } = window.jspdf; const imgData = canvasImg.toDataURL('image/png'); const imgWidth = 210; const pageHeight = 297; const imgHeight = (canvasImg.height * imgWidth) / canvasImg.width; let pdf = new jsPDF('p', 'mm', 'a4'); let position = 0; pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); let heightLeft = imgHeight - pageHeight; while (heightLeft > 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= pageHeight; } pdf.save(`${sourceSelect.value}_${usernameInput.value.trim()}_报告.pdf`); showStatus('PDF导出成功！', false, 'success'); } catch (err) { showStatus('导出失败：' + err.message, true, 'error'); } }
 
+        function exportAsCSV() {
+            if (!currentReportData) {
+                showStatus('请先生成报告再导出', true, 'error');
+                return;
+            }
+            const rows = [['date', 'contributions']];
+            Object.entries(currentReportData.contributionMap)
+                .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+                .forEach(([date, count]) => rows.push([date, count]));
+            const csv = rows.map(row => row.join(',')).join('\n');
+            const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${sourceSelect.value}_${usernameInput.value.trim()}_contributions.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showStatus('CSV导出成功！', false, 'success');
+        }
+
         async function loadAndDraw() {
             const username = usernameInput.value.trim();
             const source = sourceSelect.value;
@@ -928,6 +1336,9 @@
             progressFill.style.width = '0%';
             bigStatsDiv.style.display = 'none';
             chartsGrid.style.display = 'none';
+            actionInsights.style.display = 'none';
+            profileSectionTitle.style.display = 'none';
+            profileExtras.style.display = 'none';
             userInfoDiv.style.display = 'none';
             summaryCard.style.display = 'none';
             encouragementCard.style.display = 'none';
@@ -938,6 +1349,7 @@
                 const createdDate = new Date(createdAt).toLocaleDateString('zh-CN');
                 userInfoDiv.innerHTML = `<img class="user-avatar" src="${userInfo.avatarUrl}" alt="avatar"><div class="user-details"><div class="name">${userInfo.name || userInfo.login}</div><div class="meta">@${userInfo.login} · 注册 ${createdDate} · ${userInfo.location || ''} ${userInfo.bio ? '· ' + userInfo.bio : ''}</div></div>`;
                 userInfoDiv.style.display = 'flex';
+                loadProfileExtras(source, username, currentToken);
                 const result = await fetchAllSourceData(source, username, currentToken, createdAt);
                 currentReportData = result;
                 const { contributionMap, total, activeDays, maxDay, avgDaily, longestStreak, startDate, endDate, totalYears } = result;
@@ -950,6 +1362,7 @@
                 document.getElementById('statAvg').textContent = avgDaily;
                 document.getElementById('statMaxDay').textContent = maxDay;
                 bigStatsDiv.style.display = 'flex';
+                renderActionInsights(result);
                 updateRegisterDays(createdAt);
                 renderCharts(result);
                 chartsGrid.style.display = 'grid';
@@ -963,6 +1376,9 @@
                 showStatus(err.message, true, 'error');
                 bigStatsDiv.style.display = 'none';
                 chartsGrid.style.display = 'none';
+                actionInsights.style.display = 'none';
+                profileSectionTitle.style.display = 'none';
+                profileExtras.style.display = 'none';
                 userInfoDiv.style.display = 'none';
                 summaryCard.style.display = 'none';
                 encouragementCard.style.display = 'none';
@@ -973,6 +1389,7 @@
         fetchBtn.addEventListener('click', loadAndDraw);
         exportPNGBtn.addEventListener('click', exportAsPNG);
         exportPDFBtn.addEventListener('click', exportAsPDF);
+        exportCSVBtn.addEventListener('click', exportAsCSV);
         usernameInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') loadAndDraw(); });
         saveTokenBtn.addEventListener('click', () => { const newToken = tokenInput.value.trim(); const cfg = sourceConfig[sourceSelect.value]; if (newToken) { localStorage.setItem(cfg.tokenKey, newToken); currentToken = newToken; showStatus(`${cfg.name} Token已保存`, false, 'success'); } else { localStorage.removeItem(cfg.tokenKey); currentToken = ''; showStatus(`已清除${cfg.name} Token`, false, 'success'); } });
         

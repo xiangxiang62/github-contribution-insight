@@ -1,6 +1,6 @@
 # 📊 Contribution Insight
 
-一个支持 **GitHub / Gitee** 的代码贡献数据可视化看板。输入用户名后，即可生成贡献热力图、多维度统计图表、智能总结，并支持导出 PNG 或 PDF 报告。
+一个支持 **GitHub / Gitee** 的代码贡献数据可视化看板。输入用户名后，即可生成贡献热力图、公开仓库影响力、多维度统计图表、行动洞察、智能总结，并支持导出 PNG、PDF 或 CSV 数据。
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-f7df1e?logo=javascript)
@@ -25,10 +25,12 @@
 | 功能 | 说明 |
 |------|------|
 | 🔀 **双平台数据源** | 支持在页面中切换 GitHub 或 Gitee 数据源 |
+| 🌐 **公开影响力分析** | 额外拉取公开仓库列表，统计仓库数、原创仓库、Star、Fork、主要语言和代表仓库 |
 | 📊 **贡献热力图** | 按日期展示贡献活跃度，支持横向拖拽滚动和悬浮提示 |
 | 📈 **多维度图表** | 年度对比、月度趋势、周活跃雷达、季度分布、累计曲线、贡献等级 |
+| 🧭 **行动洞察** | 自动识别当前连续贡献、近 30 天活跃率、最高产月份/星期和贡献高峰日 |
 | 🎨 **多配色主题** | 内置 GitHub 绿、日落橙、清新绿松、热情红、深海蓝等配色 |
-| 📸 **导出分享** | 一键导出 PNG 图片或 PDF 报告，适合存档或分享 |
+| 📸 **导出分享** | 一键导出 PNG 图片、PDF 报告或 CSV 原始日历数据，适合存档、分享和二次分析 |
 | 🤖 **智能总结** | 基于统计数据生成个性化数据总结和鼓励寄语 |
 | 🔐 **Token 支持** | GitHub / Gitee Token 独立保存，可提升 API 访问稳定性 |
 
@@ -53,7 +55,9 @@
 3. 输入对应平台的用户名。
 4. 可选：填写对应平台的 Access Token 并保存。
 5. 点击 **生成完整报告**。
-6. 需要分享或存档时，点击 **导出 PNG** 或 **导出 PDF**。
+6. 需要分享、存档或二次分析时，点击 **导出 PNG**、**导出 PDF** 或 **导出 CSV**。
+
+> 公开仓库影响力会额外请求对应平台的公开仓库列表。该请求失败时不会中断贡献热力图和统计报告生成。
 
 ---
 
@@ -89,6 +93,12 @@ Gitee Token 为可选项：
 
 GitHub 使用 GraphQL API 的 `contributionsCollection.contributionCalendar` 获取贡献日历数据。它更接近 GitHub 官方贡献热力图口径，并支持按年度分段拉取完整历史数据。
 
+公开影响力模块使用 GitHub REST API：
+
+```text
+https://api.github.com/users/{username}/repos
+```
+
 ### Gitee
 
 Gitee 当前没有与 GitHub GraphQL 贡献日历完全等价的公开 API。本项目使用 Gitee 公开动态接口：
@@ -99,12 +109,19 @@ https://gitee.com/api/v5/users/{username}/events/public
 
 并按事件日期聚合为热力图数据。因此，Gitee 看板展示的是 **公开动态活跃度统计**，不保证与 Gitee 个人主页内部贡献日历完全一致。
 
+公开影响力模块使用 Gitee 公开仓库接口：
+
+```text
+https://gitee.com/api/v5/users/{username}/repos
+```
+
 ---
 
 ## 📸 导出功能说明
 
 - **PNG 导出**：将整个报告页面保存为高清图片
 - **PDF 导出**：将整个报告保存为多页 PDF 文档（自动分页）
+- **CSV 导出**：导出每日贡献明细，字段为 `date,contributions`，便于在 Excel、Numbers 或 BI 工具中继续分析
 
 导出内容包含：用户信息卡片、KPI 指标、热力图、所有统计图表、智能总结和鼓励寄语。
 
