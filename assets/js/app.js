@@ -96,6 +96,12 @@
             }
         }
 
+        function scrollHeatmapToRight() {
+            requestAnimationFrame(() => {
+                heatmapWrapper.scrollLeft = heatmapWrapper.scrollWidth - heatmapWrapper.clientWidth;
+            });
+        }
+
         // 绑定配色点击事件，同时高亮
         document.querySelectorAll('.color-swatch').forEach(el => {
             el.addEventListener('click', function(e) {
@@ -179,6 +185,7 @@
                 current.setDate(current.getDate() + 1);
                 dayIdx++;
             }
+            scrollHeatmapToRight();
         }
 
         // 鼠标悬浮检测 (基于canvas坐标)
@@ -300,6 +307,55 @@
             return fetchUserInfoWithAvatar(username, token);
         }
 
+        function getRepoKey(repo) {
+            return (repo.url || repo.name || '').toLowerCase();
+        }
+
+        async function fetchGitHubPinnedRepos(username, token) {
+            if (!token) return [];
+            const query = `query($username: String!) {
+                user(login: $username) {
+                    pinnedItems(first: 6, types: REPOSITORY) {
+                        nodes {
+                            ... on Repository {
+                                name
+                                description
+                                url
+                                stargazerCount
+                                forkCount
+                                primaryLanguage { name }
+                                updatedAt
+                                isFork
+                            }
+                        }
+                    }
+                }
+            }`;
+            const response = await fetch('https://api.github.com/graphql', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ query, variables: { username } })
+            });
+            if (!response.ok) throw new Error(`GitHub pinned 仓库获取失败：HTTP ${response.status}`);
+            const result = await response.json();
+            if (result.errors) throw new Error(result.errors[0].message);
+            const nodes = result.data?.user?.pinnedItems?.nodes || [];
+            return nodes.map(repo => ({
+                name: repo.name,
+                description: repo.description || '',
+                url: repo.url,
+                stars: repo.stargazerCount || 0,
+                forks: repo.forkCount || 0,
+                language: repo.primaryLanguage?.name || 'Other',
+                updatedAt: repo.updatedAt,
+                isFork: repo.isFork,
+                isPinned: true
+            }));
+        }
+
         async function fetchGitHubPublicRepos(username, token) {
             const headers = { 'Accept': 'application/vnd.github+json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -309,7 +365,7 @@
             const response = await fetch(url.toString(), { headers });
             if (!response.ok) throw new Error(`GitHub 仓库列表获取失败：HTTP ${response.status}`);
             const repos = await response.json();
-            return repos.map(repo => ({
+            const publicRepos = repos.map(repo => ({
                 name: repo.name,
                 description: repo.description || '',
                 url: repo.html_url,
@@ -317,8 +373,29 @@
                 forks: repo.forks_count || 0,
                 language: repo.language || 'Other',
                 updatedAt: repo.updated_at,
-                isFork: repo.fork
+                isFork: repo.fork,
+                isPinned: false
             }));
+            let pinnedRepos = [];
+            try {
+                pinnedRepos = await fetchGitHubPinnedRepos(username, token);
+            } catch (err) {
+                console.warn(err);
+            }
+            const pinnedByKey = new Map(pinnedRepos.map(repo => [getRepoKey(repo), repo]));
+            const mergedRepos = publicRepos.map(repo => {
+                const pinnedRepo = pinnedByKey.get(getRepoKey(repo));
+                return pinnedRepo ? { ...repo, isPinned: true } : repo;
+            });
+            const existingKeys = new Set(mergedRepos.map(getRepoKey));
+            pinnedRepos.forEach(repo => {
+                const key = getRepoKey(repo);
+                if (!existingKeys.has(key)) {
+                    mergedRepos.push(repo);
+                    existingKeys.add(key);
+                }
+            });
+            return mergedRepos;
         }
 
         async function fetchGiteePublicRepos(username, token) {
@@ -338,7 +415,8 @@
                 forks: repo.forks_count || 0,
                 language: repo.language || 'Other',
                 updatedAt: repo.updated_at || repo.pushed_at,
-                isFork: Boolean(repo.fork)
+                isFork: Boolean(repo.fork),
+                isPinned: false
             }));
         }
 
@@ -359,9 +437,21 @@
                 .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
                 .slice(0, 5)
                 .map(([language, count]) => ({ language, count }));
-            const topRepos = [...repos]
+            const topRepoLimit = 4;
+            const selectedRepoKeys = new Set();
+            const pinnedRepos = repos
+                .filter(repo => repo.isPinned)
+                .filter(repo => {
+                    const key = getRepoKey(repo);
+                    if (selectedRepoKeys.has(key)) return false;
+                    selectedRepoKeys.add(key);
+                    return true;
+                })
+                .slice(0, topRepoLimit);
+            const topRepos = pinnedRepos.concat([...repos]
+                .filter(repo => !selectedRepoKeys.has(getRepoKey(repo)))
                 .sort((a, b) => b.stars - a.stars || new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))
-                .slice(0, 4);
+                .slice(0, topRepoLimit - pinnedRepos.length));
             const latestRepo = [...repos]
                 .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
             return { sourceRepos, totalStars, totalForks, topLanguages, topRepos, latestRepo };
@@ -389,7 +479,7 @@
                 : '未知';
             const topRepoItems = summary.topRepos.map(repo => `
                 <div class="repo-item">
-                    <a href="${repo.url}" target="_blank" rel="noopener noreferrer">${repo.name}</a>
+                    <a href="${repo.url}" target="_blank" rel="noopener noreferrer">${repo.name}${repo.isPinned ? ' <span title="Pinned" aria-label="Pinned">📌</span>' : ''}</a>
                     <div class="repo-meta">${repo.description || '暂无描述'}</div>
                     <div class="repo-meta">★ ${repo.stars.toLocaleString()} · Fork ${repo.forks.toLocaleString()} · ${repo.language} · 更新 ${repo.updatedAt ? new Date(repo.updatedAt).toLocaleDateString('zh-CN') : '未知'}</div>
                 </div>
