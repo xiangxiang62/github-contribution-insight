@@ -875,7 +875,7 @@
 
         function renderReport(source, username, userInfo, result) {
             currentReportData = result;
-            const { contributionMap, total, activeDays, maxDay, avgDaily, longestStreak, startDate, endDate, totalYears } = result;
+            const { contributionMap, total, activeDays, avgDaily, longestStreak, startDate, endDate, totalYears } = result;
             if (Object.keys(contributionMap).length === 0) {
                 throw new Error('该用户无任何贡献记录');
             }
@@ -888,7 +888,7 @@
             document.getElementById('statActiveDays').textContent = activeDays;
             document.getElementById('statStreak').textContent = longestStreak;
             document.getElementById('statAvg').textContent = avgDaily;
-            document.getElementById('statMaxDay').textContent = maxDay;
+            document.getElementById('statActiveRate').textContent = calculateActiveRate(activeDays, userInfo.createdAt);
             bigStatsDiv.style.display = 'flex';
             renderActionInsights(result);
             renderYearProgress(result);
@@ -966,6 +966,15 @@
             } else {
                 registerDaysElement.textContent = 0;
             }
+        }
+
+        function calculateActiveRate(activeDays, createdAt) {
+            if (!createdAt) return '0.00';
+            const createdAtDate = new Date(createdAt);
+            const now = new Date();
+            const registerDays = Math.floor((now - createdAtDate) / (1000 * 60 * 60 * 24));
+            if (!Number.isFinite(registerDays) || registerDays <= 0) return '0.00';
+            return ((activeDays / registerDays) * 100).toFixed(2) + '%';
         }
 
         function renderCharts(data) {
