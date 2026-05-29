@@ -635,6 +635,50 @@
             return { map: contributionMap, total: total };
         }
 
+        async function fetchYearBatch(username, ranges, token) {
+            const variables = { username };
+            const fields = ranges.map((range, index) => {
+                variables[`from${index}`] = range.start + "T00:00:00Z";
+                variables[`to${index}`] = range.end + "T23:59:59Z";
+                return `year${index}: contributionsCollection(from: $from${index}, to: $to${index}) {
+                    contributionCalendar {
+                        totalContributions
+                        weeks { contributionDays { date contributionCount } }
+                    }
+                }`;
+            }).join('\n');
+            const variableDefs = ranges.map((_, index) => `$from${index}: DateTime!, $to${index}: DateTime!`).join(', ');
+            const query = `query($username: String!, ${variableDefs}) {
+                user(login: $username) {
+                    ${fields}
+                }
+            }`;
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            const response = await fetch('https://api.github.com/graphql', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ query, variables })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const result = await response.json();
+            if (result.errors) throw new Error(result.errors[0].message);
+
+            return ranges.map((_, index) => {
+                const calendar = result.data?.user?.[`year${index}`]?.contributionCalendar;
+                if (!calendar) return { map: {}, total: 0 };
+                const contributionMap = {};
+                let total = 0;
+                for (const week of calendar.weeks) {
+                    for (const day of week.contributionDays) {
+                        contributionMap[day.date] = day.contributionCount;
+                        total += day.contributionCount;
+                    }
+                }
+                return { map: contributionMap, total };
+            });
+        }
+
         async function fetchGiteeEvents(username, token, createdAt, today) {
             const contributionMap = createEmptyContributionMap(new Date(createdAt), today);
             let total = 0;
@@ -906,17 +950,40 @@
             const today = new Date();
             const startDate = new Date(createdAt);
             const ranges = splitDateRangeByAccurateYears(startDate, today);
-            let allMaps = [];
-            let grandTotal = 0;
-            for (let i = 0; i < ranges.length; i++) {
-                const range = ranges[i];
-                setProgressText(`正在获取 ${range.year} 年贡献数据`);
-                const yearData = await fetchOneYear(username, range.start, range.end, token);
-                allMaps.push(yearData.map);
-                grandTotal += yearData.total;
+            const allMaps = new Array(ranges.length);
+            const batchSize = token ? 5 : 3;
+            const concurrency = token ? 3 : 2;
+            const batches = [];
+            for (let i = 0; i < ranges.length; i += batchSize) {
+                batches.push({
+                    startIndex: i,
+                    ranges: ranges.slice(i, i + batchSize)
+                });
             }
+            let nextIndex = 0;
+            let completed = 0;
+
+            setProgressText(`正在批量获取 ${ranges.length} 个年度贡献数据`);
+
+            async function fetchNextBatch() {
+                while (nextIndex < batches.length) {
+                    const index = nextIndex++;
+                    const batch = batches[index];
+                    const batchData = await fetchYearBatch(username, batch.ranges, token);
+                    batchData.forEach((yearData, offset) => {
+                        allMaps[batch.startIndex + offset] = yearData;
+                    });
+                    completed += batch.ranges.length;
+                    setProgressText(`已获取 ${completed}/${ranges.length} 个年度贡献数据`);
+                }
+            }
+
+            const workerCount = Math.min(concurrency, batches.length);
+            await Promise.all(Array.from({ length: workerCount }, fetchNextBatch));
+
+            const grandTotal = allMaps.reduce((sum, yearData) => sum + yearData.total, 0);
             const mergedMap = {};
-            for (const m of allMaps) Object.assign(mergedMap, m);
+            for (const yearData of allMaps) Object.assign(mergedMap, yearData.map);
             return buildStatsFromContributionMap(mergedMap, grandTotal, startDate, today, ranges);
         }
 
