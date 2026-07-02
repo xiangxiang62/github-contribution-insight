@@ -8,6 +8,7 @@
         const tokenInput = document.getElementById('githubToken');
         const tokenLabel = document.getElementById('tokenLabel');
         const tokenHint = document.getElementById('tokenHint');
+        const githubTokenLink = document.getElementById('githubTokenLink');
         const saveTokenBtn = document.getElementById('saveTokenBtn');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
@@ -1174,6 +1175,7 @@
             tokenInput.placeholder = cfg.tokenPlaceholder;
             tokenLabel.textContent = cfg.tokenLabel;
             tokenHint.textContent = cfg.tokenHint;
+            githubTokenLink.style.display = sourceSelect.value === 'github' ? 'inline' : 'none';
             currentToken = localStorage.getItem(cfg.tokenKey) || '';
             tokenInput.value = currentToken;
         }
