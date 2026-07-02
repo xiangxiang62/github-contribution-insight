@@ -38,8 +38,8 @@
                 tokenKey: 'github_token',
                 placeholder: 'GitHub 用户名',
                 tokenPlaceholder: 'ghp_xxxxxxxxxxxx (无需任何权限)',
-                tokenLabel: '🔑 GitHub Personal Access Token (推荐):',
-                tokenHint: '⚠️ 未填Token可能遇限流',
+                tokenLabel: '🔑 GitHub Personal Access Token (贡献日历需要):',
+                tokenHint: '⚠️ GitHub 贡献日历使用 GraphQL，需要 Token（无需额外权限）',
                 defaultUsername: 'xiangxiang62'
             },
             gitee: {
@@ -272,17 +272,36 @@
             if (hint) hint.textContent = collapsed ? '点击展开' : '点击收起';
         }
 
+        function getGitHubApiErrorMessage(status, fallback = 'GitHub API 请求失败') {
+            if (status === 401) return 'GitHub Token 无效或已过期，请重新保存 Personal Access Token';
+            if (status === 403) return 'GitHub API 访问被拒绝或已限流，请检查 Token 后重试';
+            if (status === 404) return 'GitHub 用户不存在或无法公开访问';
+            return `${fallback}：HTTP ${status}`;
+        }
+
+        function getGitHubGraphQLError(result) {
+            const message = result.errors?.[0]?.message || '';
+            if (/bad credentials/i.test(message)) return 'GitHub Token 无效，请重新保存 Personal Access Token';
+            if (/rate limit/i.test(message)) return 'GitHub API 已限流，请稍后重试或更换 Token';
+            if (/requires authentication|authentication/i.test(message)) return 'GitHub 贡献日历需要配置 Personal Access Token（无需额外权限）';
+            return message || 'GitHub GraphQL 请求失败';
+        }
+
         async function fetchUserInfoWithAvatar(username, token) {
-            const query = `query($username: String!) { user(login: $username) { name login createdAt bio location avatarUrl } }`;
-            const headers = { 'Content-Type': 'application/json' };
+            const headers = { 'Accept': 'application/vnd.github+json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
-            const response = await fetch('https://api.github.com/graphql', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ query, variables: { username } })
-            });
-            const result = await response.json();
-            return result.data?.user;
+            const response = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, { headers });
+            if (response.status === 404) return null;
+            if (!response.ok) throw new Error(getGitHubApiErrorMessage(response.status, 'GitHub 用户信息获取失败'));
+            const user = await response.json();
+            return {
+                name: user.name,
+                login: user.login,
+                createdAt: user.created_at,
+                bio: user.bio,
+                location: user.location,
+                avatarUrl: user.avatar_url
+            };
         }
 
         async function fetchGiteeUserInfo(username, token) {
@@ -619,9 +638,9 @@
                 method: 'POST', headers: headers,
                 body: JSON.stringify({ query, variables: { username, from: startDate + "T00:00:00Z", to: endDate + "T23:59:59Z" } })
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) throw new Error(getGitHubApiErrorMessage(response.status, 'GitHub 贡献日历获取失败'));
             const result = await response.json();
-            if (result.errors) throw new Error(result.errors[0].message);
+            if (result.errors) throw new Error(getGitHubGraphQLError(result));
             const calendar = result.data?.user?.contributionsCollection?.contributionCalendar;
             if (!calendar) return { map: {}, total: 0 };
             const contributionMap = {};
@@ -660,9 +679,9 @@
                 headers: headers,
                 body: JSON.stringify({ query, variables })
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) throw new Error(getGitHubApiErrorMessage(response.status, 'GitHub 贡献日历获取失败'));
             const result = await response.json();
-            if (result.errors) throw new Error(result.errors[0].message);
+            if (result.errors) throw new Error(getGitHubGraphQLError(result));
 
             return ranges.map((_, index) => {
                 const calendar = result.data?.user?.[`year${index}`]?.contributionCalendar;
@@ -997,6 +1016,7 @@
 
         async function fetchAllSourceData(source, username, token, createdAt) {
             if (source === 'gitee') return fetchGiteeAllYears(username, token, createdAt);
+            if (!token) throw new Error(`GitHub 用户 "${username}" 已找到，但贡献日历需要配置 Personal Access Token（无需额外权限）`);
             return fetchAllYears(username, token, createdAt);
         }
 
